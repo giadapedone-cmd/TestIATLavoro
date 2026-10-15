@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Test IAT</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:Arial, sans-serif; background:#e9ecef; -webkit-tap-highlight-color: transparent; }
+  #app { max-width:480px; margin:0 auto; min-height:100vh; max-height:100vh; overflow-y:auto; background:white; display:flex; flex-direction:column; }
+  .schermo { display:flex; flex-direction:column; padding:clamp(12px, 3vw, 24px); }
+  h1,h2,h3 { text-align:center; }
+  h2 { font-size: clamp(20px, 3vw, 26px); }
+  input, select, button { font-size:16px; }
+  input, select { width:100%; padding:12px; margin:6px 0 14px; border:1px solid #ccc; border-radius:6px; }
+  #pulsante-continua, #campo-conferma { padding:16px; width:100%; background:#343a40; color:white; border:none; border-radius:8px; font-size:18px; cursor:pointer; }
+  .barra-categorie { display:flex; justify-content:space-between; align-items:flex-start; font-weight:bold; font-size:clamp(13px, 2vw, 17px); padding:10px 4px; gap:8px; }
+  .barra-categorie span { flex:1; white-space:normal; word-break:break-word; line-height:1.3; }
+  .barra-categorie span:first-child { text-align:left; }
+  .barra-categorie span:last-child { text-align:right; }
+.parola-centro { 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  text-align: center; 
+  /* 1. Abbiamo ridotto il padding (es. minimo 4px, massimo 16px) */
+  padding: clamp(4px, 2vh, 16px) 0; 
+} 
+
+.parola-centro h1 { 
+  font-size: clamp(28px, 6vw, 46px); 
+  margin: 0; 
+  /* 2. Resetta l'altezza della linea per eliminare lo spazio extra del font */
+  line-height: 1; 
+}
+  .pulsanti-risposta { display:flex; gap:clamp(8px, 2vw, 16px); padding-bottom:10px; }
+  .pulsante-lato { flex:1; padding:clamp(18px, 3vw, 26px) 8px; font-size:clamp(14px, 2vw, 18px); font-weight:bold; border:3px solid #343a40; border-radius:10px; background:white; color:#343a40; cursor:pointer; transition:background .1s; }
+  .pulsante-lato:active { background:#343a40; color:white; }
+  @media (hover:hover) { .pulsante-lato:hover { background:#f1f3f5; } .pulsante-lato:hover:active { background:#343a40; } }
+  .x-rossa { position:fixed; top:45%; left:0; right:0; text-align:center; font-size:70px; color:#c0392b; font-weight:bold; pointer-events:none; }
+  #errore-form { color:#c0392b; font-size:13px; min-height:18px; text-align:center; }
+  table { width:100%; border-collapse:collapse; font-size:13px; margin-top:10px; }
+  th,td { padding:6px; border-bottom:1px solid #dee2e6; }
+  th { background:#343a40; color:white; }
+
+  /* Tablet e desktop: la card si allarga e si centra, invece di restare
+     una striscia stretta; il resto (font, pulsanti) scala con clamp() già sopra */
+  @media (min-width: 640px) {
+    #app { max-width:700px; margin:32px auto; border-radius:14px; box-shadow:0 6px 30px rgba(0,0,0,0.10); min-height:auto; max-height:none; }
+    .pulsante-lato { padding-top:34px; padding-bottom:34px; }
+  }
+  @media (min-width: 1024px) {
+    #app { max-width:820px; margin:48px auto; }
+  }
+</style>
+</head>
+<body>
+<div id="app"><div class="schermo" id="schermo"><p style="text-align:center;">Caricamento...</p></div></div>
+
+<!-- Invio dati verso Apps Script tramite form nascosto + iframe invisibile:
+     a differenza di fetch()/XMLHttpRequest, una submission di form HTML
+     verso un altro dominio funziona in modo affidabile anche con i
+     redirect che Apps Script usa internamente, senza richiedere nessuna
+     intestazione CORS sulla risposta (che Apps Script spesso non manda). -->
+<iframe name="iframe-invio-nascosto" style="display:none;"></iframe>
+<form id="form-invio-dati" method="POST" target="iframe-invio-nascosto" style="display:none;">
+  <input type="hidden" name="payload" id="campo-payload">
+</form>
+<div style="position:fixed;bottom:4px;right:6px;font-size:10px;color:#ccc;z-index:9999;">versione pagina: v6-dscore-penalita600-adattato</div>
+
+<script>
+// ============================================================
+// sostituisci qui sotto l'URL con quello del TUO Google Apps Script
+// (vedi istruzioni "come collegare Google Sheet" a parte).
+// ============================================================
+var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyXwcqM9QrpPjCEB3tFkZ5nWoY7AMa1jCUa_YBlzX3sOPoDizp2G0LHgmVdGoqAB32cwQ/exec";
+
+var schermo = document.getElementById('schermo');
+
+// Backup locale: conserva i dati e offre più metodi compatibili con browser desktop e mobili.
+var pacchettoBackup = '';
+var nomeFileBackup = 'dati_iat_anonimo.json';
+
+function mostraCopiaJson() {
+  var area = document.getElementById('area-copia-json');
+  if (!area) return;
+  area.style.display = 'block';
+  var testo = document.getElementById('testo-copia-json');
+  if (testo) {
+    testo.value = pacchettoBackup || '';
+    testo.focus();
+    testo.select();
+  }
+}
+
+async function scaricaBackupManuale() {
+  if (!pacchettoBackup) {
+    alert('I dati non sono ancora pronti. Attendi che compaia la schermata finale e riprova.');
+    return;
+  }
+
+  // Su iPhone/iPad e su alcuni browser Android, la condivisione di un file
+  // permette di scegliere esplicitamente "Salva su File" o un'altra app.
+  try {
+    if (navigator.share && typeof File === 'function') {
+      var file = new File([pacchettoBackup], nomeFileBackup, {type:'application/json'});
+      if (!navigator.canShare || navigator.canShare({files:[file]})) {
+        await navigator.share({files:[file], title:'Copia dati IAT', text:'Copia locale dei dati del test'});
+        return;
+      }
+    }
+  } catch (e) {
+    // Se l'utente annulla la condivisione, non apriamo altri popup.
+    if (e && e.name === 'AbortError') return;
+  }
+
+  // Fallback per browser desktop o browser che non supportano la condivisione.
+  try {
+    var blob = new Blob([pacchettoBackup], {type:'application/json;charset=utf-8'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = nomeFileBackup;
+    a.style.position = 'fixed';
+    a.style.left = '-10000px';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 120000);
+  } catch (e) {
+    mostraCopiaJson();
+    alert('Il browser non ha avviato il download. Si è aperta la copia dei dati: usa Copia JSON e incollala in un file di testo da salvare con il nome mostrato.');
+  }
+}
+
+function copiaJsonNegliAppunti() {
+  var testo = document.getElementById('testo-copia-json');
+  if (!testo) return;
+  testo.value = pacchettoBackup || '';
+  testo.focus();
+  testo.select();
+  try {
+    var ok = document.execCommand('copy');
+    alert(ok ? 'JSON copiato. Incollalo in un editor di testo e salva il file come ' + nomeFileBackup : 'Testo selezionato: scegli Copia dal menu del dispositivo, poi incollalo in un file di testo.');
+  } catch(e) {
+    alert('Testo selezionato: scegli Copia dal menu del dispositivo, poi incollalo in un file di testo.');
+  }
+}
+var REGIONI = ["Abruzzo","Basilicata","Calabria","Campania","Emilia-Romagna","Friuli-Venezia Giulia","Lazio","Liguria","Lombardia","Marche","Molise","Piemonte","Puglia","Sardegna","Sicilia","Toscana","Trentino-Alto Adige","Umbria","Valle d'Aosta","Veneto"];
+
+var target_femminile = ['Giulia','Rossella','Asia','Giada','Rosa','Alessia'];
+var target_maschile = ['Luca','Mario','Samuele','Gabriele','Filippo','Federico'];
+
+var argomenti = [
+  { id:'lavoro1', titolo:'LAVORO_1', etichettaA:'Ambito Industriale', etichettaB:'Ambito Scolastico',
+    attrA:['Magazziniere','Assemblatore','Saldatore','Carrozziere'],
+    attrB:['Insegnante di asilo','Personale di collaborazione scolastica','Educatore','Assistente amministrativa'] },
+  { id:'lavoro2', titolo:'LAVORO_2', etichettaA:'Ambito Sanitario', etichettaB:'Ambito Spettacolo',
+    attrA:['Ortopedico','Osteopata','Fisioterapista','Medico/a',"Farmacista","Cardiochirurgo"],
+    attrB:['Giornalista di cronaca rosa','Opinionista','Costumista','Effettua una co-conduzione','Dialoghista','Casting Director'] },
+  { id:'lavoro3', titolo:'LAVORO_3', etichettaA:'Ambito Trasporti', etichettaB:'Ambito Estetico',
+    attrA:['Corriere','Camionista',"Mulettista",'Macchinista ferroviario','Autista di autobus'],
+    attrB:['Onicotecnica (trattamento unghie)','Consulente di dermocosmesi','Consulente immagine','Estetista',"Lash & Brow Specialist"] }
+];
+
+function shuffle(arr){var a=arr.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+
+// Rileva se il test viene fatto da cellulare o da pc/tablet, in automatico
+// (lo studente non deve indicarlo lui): usiamo lo user agent del browser,
+// lo stesso metodo che usano la maggior parte dei siti per questo scopo.
+// Il valore rilevato viene salvato nel campo "dispositivo_rilevato",
+// separato da "dispositivo" (quello dichiarato dallo studente nel modulo),
+// cosi' i due dati non si sovrascrivono e si possono confrontare.
+function rilevaDispositivo(){
+  var mobile = /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent);
+  return mobile ? 'cellulare' : 'pc';
+}
+
+var trials = [];          // dati raccolti, uno per trial
+var extra = { dispositivo_rilevato: rilevaDispositivo() };  // id/età/sesso/regione/dispositivo/ordine..., uniti a ogni trial
+var timeline = [];
+var indice = -1;
+
+function avanti(){
+  indice++;
+  if (indice >= timeline.length) { return fineTest(); }
+  timeline[indice]();
+}
+function registra(record){
+  trials.push(Object.assign({trial_index: indice}, extra, record));
+  avanti();
+}
+
+// schermata di solo testo, avanza al tocco
+function schermataTesto(html){
+  return function(){
+    schermo.innerHTML = html + "<button id='pulsante-continua' style='margin-top:20px;'>Continua</button>";
+    document.getElementById('pulsante-continua').onclick = function(){ registra({trial_type:'istruzioni'}); };
+  };
+}
+
+var PAESI = ["Italia","Francia","Germania","Spagna","Svizzera","Romania","Albania","Regno Unito","Altro paese europeo","Paese extraeuropeo"];
+
+// modulo iniziale id/dispositivo/età/sesso/paese/regione
+function schermataDatiPartecipante(){
+  return function(){
+   
+var opzRegioni = REGIONI.map(r =>
+  "<option value='"+r+"'"+(r === 'Piemonte' ? " selected" : "")+">"+r+"</option>"
+).join("");
+
+var opzPaesi = PAESI.map(p =>
+  "<option value='"+p+"'"+(p === 'Italia' ? " selected" : "")+">"+p+"</option>"
+).join("");
+
+    schermo.innerHTML =
+      "<h2>Prima di iniziare</h2><p style='color:#555;font-size:14px;text-align:center;'>Questi dati servono solo per l'analisi statistica in forma aggregata.</p>"+
+      "<label>Codice identificativo</label><input id='c-id' type='text'>"+
+      "<label>Dispositivo utilizzato per eseguire il test</label><select id='c-disp'><option value=''>-- seleziona --</option><option>Cellulare</option><option>Computer</option><option>Tablet</option></select>"+
+      "<label>Età</label><input id='c-eta' type='number' min='16' max='99'>"+
+      "<label>Genere</label><select id='c-sesso'><option value=''>-- seleziona --</option><option>Femmina</option><option>Maschio</option><option>Preferisco non specificare</option></select>"+
+      "<label>Paese di residenza</label><select id='c-paese'><option value=''>-- seleziona --</option>"+opzPaesi+"</select>"+
+      "<div id='blocco-regione'><label>Regione di residenza</label><select id='c-regione'><option value=''>-- seleziona --</option>"+opzRegioni+"</select></div>"+
+      "<div id='errore-form'></div><button id='campo-conferma'>Continua</button>";
+
+    var bloccoRegione = document.getElementById('blocco-regione');
+    document.getElementById('c-paese').onchange = function(){
+      var mostraRegione = this.value === 'Italia';
+      bloccoRegione.style.display = mostraRegione ? '' : 'none';
+      if (!mostraRegione) document.getElementById('c-regione').value = '';
+    };
+
+    document.getElementById('campo-conferma').onclick = function(){
+      var id = document.getElementById('c-id').value.trim();
+      var dispositivo = document.getElementById('c-disp').value;
+      var eta = parseInt(document.getElementById('c-eta').value, 10);
+      var sesso = document.getElementById('c-sesso').value;
+      var paese = document.getElementById('c-paese').value;
+      var regione = paese === 'Italia' ? document.getElementById('c-regione').value : '';
+      if (!id || !dispositivo || !eta || !sesso || !paese || (paese==='Italia' && !regione)){ document.getElementById('errore-form').textContent = "Compila tutti i campi."; return; }
+      if (isNaN(eta) || eta<16 || eta>99){ document.getElementById('errore-form').textContent = "Età non valida."; return; }
+      extra = Object.assign(extra, {participant_id:id, dispositivo:dispositivo, eta:eta, sesso:sesso, paese:paese, regione:regione});
+      registra({trial_type:'dati-partecipante'});
+    };
+  };
+}
+
+// un trial dello IAT con due pulsanti a tocco (sinistra/destra)
+// numeroTest (1-4) e domanda (il testo della consegna di questa fase) sono
+// stati aggiunti solo per essere salvati nel json di ogni prova, come
+// richiesto: non cambiano nulla di cosa vede o come risponde lo studente.
+function trialIat(parola, categoria, lato, etichettaSx, etichettaDx, blocco, topicId, condizione, numeroTest, domanda){
+  return function(){
+    var inizio = performance.now();
+    var numeroErrori = 0, primoLato = null, rtPrimoTentativo = null;
+    schermo.innerHTML =
+      "<div class='barra-categorie'><span>"+[].concat(etichettaSx).join(' / ')+"</span><span>"+[].concat(etichettaDx).join(' / ')+"</span></div>"+
+      "<div class='parola-centro'><h1>"+parola+"</h1></div>"+
+      "<div class='pulsanti-risposta'>"+
+      "<button class='pulsante-lato' id='btn-sx'>◀ SINISTRA<br><span style='font-weight:normal;font-size:0.85em;'>"+"</span></button>"+
+      "<button class='pulsante-lato' id='btn-dx'>DESTRA ▶<br><span style='font-weight:normal;font-size:0.85em;'>"+"</span></button></div>";
+
+    function tocco(latoScelto){
+      var rt = performance.now() - inizio;
+      if (primoLato === null){ primoLato = latoScelto; rtPrimoTentativo = rt; }
+      if (latoScelto === lato){
+        registra({
+          rt: rt, rt_primo_tentativo: rtPrimoTentativo, correct: numeroErrori===0, numero_errori: numeroErrori,
+          risposta: latoScelto, primo_lato_scelto: primoLato,
+          stimulus_name: parola, category: categoria, block: blocco, topic: topicId, condizione: condizione,
+          numero_test: numeroTest, domanda_test: domanda,
+          etichetta_sinistra: [].concat(etichettaSx).join(' / '), etichetta_destra: [].concat(etichettaDx).join(' / '),
+          trial_type: 'iat-touch'
+        });
+      } else {
+        numeroErrori++;
+        var x = document.createElement('div'); x.className='x-rossa'; x.textContent='✕';
+        document.body.appendChild(x); setTimeout(()=>x.remove(), 300);
+      }
+    }
+    document.getElementById('btn-sx').onpointerdown = function(){ tocco('left'); };
+    document.getElementById('btn-dx').onpointerdown = function(){ tocco('right'); };
+  };
+}
+
+function timelineArgomento(argomento, stereoPrima){
+  var fasi = [];
+  fasi.push(schermataTesto("<h2>"+argomento.titolo+"</h2><p style='text-align:center;'>Tocca Continua per iniziare il primo test.</p>"));
+
+  var domandaTest1 = "Smista i NOMI in LEI (sinistra) o LUI (destra).";
+  fasi.push(schermataTesto("<h3>Test 1</h3><p style='text-align:center;'>LEI è in alto a sinistra, LUI in alto a destra. Tocca SINISTRA o DESTRA a seconda del nome mostrato.</p>"));
+  var t1 = [];
+  target_femminile.forEach(w=>t1.push(trialIat(w,'femminile','left',['LEI'],['LUI'],'test1_target',argomento.id,null,1,domandaTest1)));
+  target_maschile.forEach(w=>t1.push(trialIat(w,'maschile','right',['LEI'],['LUI'],'test1_target',argomento.id,null,1,domandaTest1)));
+  fasi = fasi.concat(shuffle(t1));
+
+  var domandaTest2 = "Smista le ATTIVITÀ in "+argomento.etichettaA.toUpperCase()+" (sinistra) o "+argomento.etichettaB.toUpperCase()+" (destra).";
+  fasi.push(schermataTesto("<h3>Test 2</h3><p style='text-align:center;'>"+argomento.etichettaA.toUpperCase()+" è in alto a sinistra, "+argomento.etichettaB.toUpperCase()+" in alto a destra. Tocca SINISTRA o DESTRA a seconda dell'attività mostrata.</p>"));
+  var t2 = [];
+  argomento.attrA.forEach(w=>t2.push(trialIat(w,'attrA','left',[argomento.etichettaA],[argomento.etichettaB],'test2_attributo',argomento.id,null,2,domandaTest2)));
+  argomento.attrB.forEach(w=>t2.push(trialIat(w,'attrB','right',[argomento.etichettaA],[argomento.etichettaB],'test2_attributo',argomento.id,null,2,domandaTest2)));
+  fasi = fasi.concat(shuffle(t2));
+
+function blocco(femminileConA, numeroTest){
+  var ts = [];
+
+  // LEI rimane SEMPRE a sinistra e LUI SEMPRE a destra.
+  // Cambia soltanto il lato delle categorie delle attività.
+  var sx = femminileConA
+    ? ['LEI', argomento.etichettaA]
+    : ['LEI', argomento.etichettaB];
+
+  var dx = femminileConA
+    ? ['LUI', argomento.etichettaB]
+    : ['LUI', argomento.etichettaA];
+
+  var cond = femminileConA
+    ? 'stereotipica'
+    : 'controstereotipica';
+
+  var domandaCombinata =
+    "Smista NOMI e ATTIVITÀ tra " +
+    sx.join(' + ') + " (sinistra) e " +
+    dx.join(' + ') + " (destra).";
+
+  // I NOMI NON CAMBIANO MAI LATO:
+  // nomi femminili sempre a sinistra
+  // nomi maschili sempre a destra
+  target_femminile.forEach(function(w) {
+    ts.push(trialIat(
+      w, 'lei', 'left', sx, dx,
+      'combinato', argomento.id, cond,
+      numeroTest, domandaCombinata
+    ));
+  });
+
+  target_maschile.forEach(function(w) {
+    ts.push(trialIat(
+      w, 'lui', 'right', sx, dx,
+      'combinato', argomento.id, cond,
+      numeroTest, domandaCombinata
+    ));
+  });
+
+  // Le attività A e B si scambiano di lato tra Test 3 e Test 4.
+  argomento.attrA.forEach(function(w) {
+    ts.push(trialIat(
+      w, 'attrA', femminileConA ? 'left' : 'right',
+      sx, dx, 'combinato', argomento.id, cond,
+      numeroTest, domandaCombinata
+    ));
+  });
+
+  argomento.attrB.forEach(function(w) {
+    ts.push(trialIat(
+      w, 'attrB', femminileConA ? 'right' : 'left',
+      sx, dx, 'combinato', argomento.id, cond,
+      numeroTest, domandaCombinata
+    ));
+  });
+
+  var nota = numeroTest === 3
+    ? "I nomi femminili sono sempre a sinistra e quelli maschili a destra. Le attività sono associate alle categorie indicate sopra."
+    : "Attenzione: LEI rimane a sinistra e LUI a destra. Sono cambiate soltanto le posizioni delle categorie delle attività rispetto al test precedente.";
+
+  fasi.push(schermataTesto(
+    "<h3>Test " + numeroTest + "</h3>" +
+    "<p style='text-align:center;'>Categorie combinate:<br>" +
+    sx.join(' + ') + " / " + dx.join(' + ') +
+    "</p>" +
+    "<p style='color:#7f8c8d;font-size:14px;text-align:center;'>" +
+    nota + "</p>"
+  ));
+
+  fasi = fasi.concat(shuffle(ts));
+}
+
+  blocco(stereoPrima, 3);
+  blocco(!stereoPrima, 4);
+  return fasi;
+}
+
+function fineTest(){
+  function media(a){ return a.reduce((x,y)=>x+y,0)/a.length; }
+  function deviazioneStandard(a){
+    var m = media(a);
+    var varCampionaria = a.reduce((s,x)=>s+(x-m)*(x-m),0) / (a.length-1);
+    return Math.sqrt(varCampionaria);
+  }
+
+  // ------------------------------------------------------------------
+  // SCORING: adattamento del D-score di Greenwald, Nosek e Banaji (2003)
+  // alla struttura richiesta di 4 test.
+  //
+  // NOTA METODOLOGICA: questa versione ha un solo blocco combinato per
+  // condizione e argomento; quindi non può calcolare la media dei due
+  // D-score separati (pratica e test) prevista dalla procedura classica.
+  // Calcola un D adattato confrontando il blocco stereotipico con quello
+  // controstereotipico.
+  //
+  // Criteri:
+  // 1. Escludere prove con latenza del primo tentativo > 10.000 ms.
+  // 2. Escludere il partecipante se >10% delle prove combinate valide ha
+  //    una prima risposta <300 ms.
+  // 3. Per le risposte corrette usare la latenza del primo tentativo.
+  // 4. Per ogni errore sostituire la latenza con la media delle risposte
+  //    corrette del medesimo blocco + 600 ms.
+  // 5. D = (media controstereotipica - media stereotipica) / SD campionaria
+  //    dei tempi aggiustati delle due condizioni riunite.
+  // D positivo = risposte più rapide nella condizione stereotipica.
+  // ------------------------------------------------------------------
+
+  // Le latenze di scoring sono basate sulla prima risposta: rt_primo_tentativo
+  // misura la latenza iniziale; rt registra invece il tempo fino alla
+  // risposta corretta dopo eventuali errori ed è conservato nei dati grezzi.
+  function proveValide(topicId) {
+    return trials.filter(function(tr) {
+      return tr.trial_type === 'iat-touch' &&
+        tr.block === 'combinato' &&
+        tr.topic === topicId &&
+        Number.isFinite(tr.rt_primo_tentativo) &&
+        tr.rt_primo_tentativo > 0 &&
+        tr.rt_primo_tentativo <= 10000 &&
+        (tr.condizione === 'stereotipica' ||
+         tr.condizione === 'controstereotipica');
+    });
+  }
+
+  // Criterio di qualità a livello di partecipante: più del 10% di prime
+  // risposte sotto i 300 ms nelle prove combinate valide.
+  var proveCombinateTutte = [];
+  argomenti.forEach(function(a) {
+    proveCombinateTutte = proveCombinateTutte.concat(proveValide(a.id));
+  });
+
+  var partecipanteEscluso =
+    proveCombinateTutte.length > 0 &&
+    proveCombinateTutte.filter(function(tr) {
+      return tr.rt_primo_tentativo < 300;
+    }).length / proveCombinateTutte.length > 0.10;
+
+  // Calcola le latenze da usare nello scoring. Gli errori sono sostituiti
+  // con la media dei trial corretti nello stesso blocco + 600 ms.
+  function tempiAggiustati(prove) {
+    var corretti = prove.filter(function(tr) {
+      return tr.correct === true && Number.isFinite(tr.rt_primo_tentativo);
+    });
+    if (!corretti.length) return null;
+
+    var mediaCorretti = media(corretti.map(function(tr) {
+      return tr.rt_primo_tentativo;
+    }));
+
+    return prove.map(function(tr) {
+      if (tr.correct === true) return tr.rt_primo_tentativo;
+      return mediaCorretti + 600;
+    });
+  }
+
+ 
+function calcolaDScore(topicId) {
+  if (partecipanteEscluso) return null;
+
+  var t = proveValide(topicId);
+
+  var stereo = t.filter(function(tr) {
+    return tr.condizione === 'stereotipica';
+  });
+
+  var contro = t.filter(function(tr) {
+    return tr.condizione === 'controstereotipica';
+  });
+
+  if (stereo.length < 2 || contro.length < 2) return null;
+
+  // Medie dei tempi aggiustati: gli errori valgono
+  // la media delle risposte corrette del blocco + 600 ms.
+  var rtStereo = tempiAggiustati(stereo);
+  var rtContro = tempiAggiustati(contro);
+
+  if (!rtStereo || !rtContro) return null;
+
+  // Deviazione standard calcolata sui tempi del primo tentativo
+  // ORIGINALI, prima della sostituzione degli errori.
+  var tuttiRT = stereo.concat(contro).map(function(tr) {
+    return tr.rt_primo_tentativo;
+  });
+
+  var sd = deviazioneStandard(tuttiRT);
+
+  if (!Number.isFinite(sd) || sd <= 0) return null;
+
+  // D = differenza tra le medie aggiustate / SD dei tempi originali.
+  return (media(rtContro) - media(rtStereo)) / sd;
+}
+
+
+  // I tempi medi mostrati nei risultati usano la stessa correzione errori
+  // applicata al D-score, così il riepilogo resta coerente con l'indice.
+  function sintesi(topicId) {
+    var t = proveValide(topicId);
+    var stereo = t.filter(function(tr) {
+      return tr.condizione === 'stereotipica';
+    });
+    var contro = t.filter(function(tr) {
+      return tr.condizione === 'controstereotipica';
+    });
+    if (!stereo.length || !contro.length) return null;
+
+    var rtStereo = tempiAggiustati(stereo);
+    var rtContro = tempiAggiustati(contro);
+    if (!rtStereo || !rtContro) return null;
+
+    return {
+      mS: Math.round(media(rtStereo)),
+      mC: Math.round(media(rtContro))
+    };
+  }
+
+  // Frase di commento al punteggio D mostrata allo studente
+  function frasePerD(d){
+    if (d === null || !Number.isFinite(d)) {
+      return "punteggio non calcolabile secondo i criteri di qualità previsti";
+    }
+    if (Math.abs(d) < 0.15) {
+      return "punteggio vicino allo zero; il risultato va interpretato con cautela e non dimostra l'assenza di associazioni implicite";
+    }
+    return d > 0
+      ? "tempi medi più brevi nella condizione stereotipica rispetto a quella controstereotipica"
+      : "tempi medi più brevi nella condizione controstereotipica rispetto a quella stereotipica";
+  }
+
+  // riga di riepilogo per partecipante (un D-score per argomento): la
+  // riconosce dal trial_type e la scrive in un foglio SEPARATO
+  // ("riepilogo"), cosi' da avere sia i dati grezzi sia, gia' pronta,
+  // la tabella un-rigo-per-partecipante che serve per lo studio aggregato.
+  var dScorePerArgomento = {};
+  var riepilogoPartecipante = Object.assign({ trial_type: 'riepilogo-dscore' }, extra);
+  argomenti.forEach(a=>{
+    var d = calcolaDScore(a.id);
+    dScorePerArgomento[a.id] = d;
+    riepilogoPartecipante['d_score_'+a.id] = d===null ? '' : Number(d.toFixed(3));
+  });
+  trials.push(riepilogoPartecipante);
+
+  var pacchetto = JSON.stringify(trials);
+  // Conserva il JSON per il pulsante manuale mostrato nell'ultima schermata.
+  pacchettoBackup = pacchetto;
+  nomeFileBackup = 'dati_iat_' + (extra.participant_id || 'anonimo') + '.json';
+
+  // Il download NON parte automaticamente: lo studente lo avvia toccando
+  // il pulsante nell'ultima schermata, gesto richiesto/gestito meglio
+  // da Safari e Chrome su dispositivi mobili. L'invio al server continua
+  // separatamente in background.
+
+  // L'invio al foglio Google parte SUBITO, in background, mentre lo
+  // studente scorre le schermate di risultato: cosi' quando arriva
+  // all'ultima schermata l'esito (riuscito o no) è quasi sempre già noto.
+  var statoInvio = APPS_SCRIPT_URL.indexOf('INCOLLA_QUI') !== -1 ? 'non-configurato' : 'in-corso';
+  function aggiornaStatoSeSullUltimaSchermata(){
+    // se l'esito dell'invio arriva mentre lo studente è già sull'ultima
+    // schermata (caso raro, solo per chi tocca "Avanti" molto rapidamente),
+    // la ridisegna cosi' mostra l'esito vero invece di "Invio in corso..."
+    if (typeof mostraPagina === 'function' && schermoSuUltima) mostraPagina(pagine.length - 1);
+  }
+
+  if (statoInvio !== 'non-configurato') {
+    // Invio tramite form nascosto + iframe invisibile (vedi commento HTML):
+    // più affidabile di fetch()/XHR per i redirect interni di Apps Script.
+    var formInvio = document.getElementById('form-invio-dati');
+    var iframeInvio = document.querySelector("iframe[name='iframe-invio-nascosto']");
+
+    document.getElementById('campo-payload').value = pacchetto;
+    formInvio.action = APPS_SCRIPT_URL;
+
+    iframeInvio.onload = function () {
+      if (statoInvio === 'ok') return; // l'iframe può scatenare "load" più di una volta
+      statoInvio = 'ok';
+      aggiornaStatoSeSullUltimaSchermata();
+    };
+    // di riserva: se l'iframe non dà mai segnale di "load" su qualche
+    // browser, dopo 4 secondi consideriamo comunque l'invio avvenuto
+    setTimeout(function () {
+      if (statoInvio === 'in-corso') { statoInvio = 'ok'; aggiornaStatoSeSullUltimaSchermata(); }
+    }, 4000);
+
+    formInvio.submit();
+  }
+
+  // ------------------------------------------------------------------
+  // 6 SCHERMATE DI RISULTATO IN SEQUENZA (richiesta della docente): una
+  // pagina per argomento con i tempi medi delle due combinazioni, poi
+  // una pagina per argomento con il punteggio D. Lo studente avanza
+  // toccando "Avanti"; sull'ultima compare anche l'esito dell'invio.
+  // ------------------------------------------------------------------
+  function paginaTempi(a){
+    var s = sintesi(a.id);
+    if (!s) return "<h3>"+a.titolo+"</h3><p style='text-align:center;color:#7f8c8d;'>Dati insufficienti per questo argomento.</p>";
+    return "<h3>"+a.titolo+" — Tempi di risposta</h3>"+
+      "<p style='text-align:center;'>Tempo medio delle risposte che <b>confermano</b> lo stereotipo:<br><span style='font-size:22px;'>"+s.mS+" ms</span></p>"+
+      "<p style='text-align:center;'>Tempo medio delle risposte che <b>NON confermano</b> lo stereotipo:<br><span style='font-size:22px;'>"+s.mC+" ms</span></p>";
+  }
+  function paginaDScore(a){
+    var d = dScorePerArgomento[a.id];
+    var dTesto = d===null ? "n.d." : d.toFixed(2);
+    return "<h3>"+a.titolo+" — Punteggio D</h3>"+
+      "<p style='text-align:center;font-size:30px;font-weight:bold;'>"+dTesto+"</p>"+
+      "<p style='text-align:center;'>"+frasePerD(d)+"</p>"+
+      "<p style='font-size:12px;color:#7f8c8d;text-align:center;margin-top:10px;'>Il punteggio può variare da <b>-2</b> a <b>+2</b>: se vicino allo zero implica nessuna associazione implicita rilevante; più si allontana dallo zero (in positivo), più forte sarà l'associazione in direzione dello stereotipo; più si allontana dallo zero (in negativo), più forte sarà l'associazione in direzione contraria allo stereotipo. Non è un giudizio sulla persona: riflette solo i tempi di reazione in questo test..</p>";
+  }
+
+  function testoStato(){
+    if (statoInvio === 'ok') return "<p style='font-size:13px;color:#2e7d32;text-align:center;'>Richiesta di invio completata. Per sicurezza, scarica anche una copia JSON usando il pulsante qui sotto.</p>";
+    if (statoInvio === 'fallito' || statoInvio === 'non-configurato') return "<p style='font-size:13px;color:#b45309;text-align:center;'>Non è stato possibile completare l'invio al server. Scarica la copia JSON con il pulsante qui sotto e inviala alla docente.</p>";
+    return "<p style='font-size:13px;color:#7f8c8d;text-align:center;'>Invio al server in corso. Puoi scaricare la copia JSON anche mentre attendi.</p>";
+  }
+
+  var pagine = argomenti.map(paginaTempi).concat(argomenti.map(paginaDScore));
+  var schermoSuUltima = false;
+
+  function mostraPagina(i){
+    var isUltima = i === pagine.length - 1;
+    schermoSuUltima = isUltima;
+    var extraFinale = isUltima ? testoStato() : "";
+    schermo.innerHTML = "<div>"+pagine[i]+"</div>"+extraFinale+
+      (isUltima ? "<button type='button' id='pulsante-scarica-json' style='display:block;width:100%;padding:14px;margin-top:20px;background:#198754;color:white;border:none;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer;'>Salva copia JSON sul dispositivo</button>"+
+       "<button type='button' id='pulsante-mostra-json' style='display:block;width:100%;padding:12px;margin-top:10px;background:#343a40;color:white;border:none;border-radius:8px;font-size:15px;cursor:pointer;'>Se il download non parte: mostra/copia i dati</button>"+
+       "<div id='area-copia-json' style='display:none;margin-top:12px;'><p style='font-size:13px;'>Puoi copiare il contenuto e incollarlo in un editor di testo. Salva il file con il nome <b id='nome-file-json'></b>.</p><textarea id='testo-copia-json' readonly style='width:100%;min-height:180px;font-size:12px;'></textarea><button type='button' id='pulsante-copia-json' style='width:100%;padding:12px;margin-top:8px;'>Copia JSON</button></div>" : "")+
+      "<button id='pulsante-avanti-risultati' style='margin-top:20px;'>"+(isUltima ? 'Fine' : 'Avanti')+"</button>";
+    if (isUltima) {
+      document.getElementById('nome-file-json').textContent = nomeFileBackup;
+      document.getElementById('pulsante-scarica-json').onclick = scaricaBackupManuale;
+      document.getElementById('pulsante-mostra-json').onclick = mostraCopiaJson;
+      document.getElementById('pulsante-copia-json').onclick = copiaJsonNegliAppunti;
+    }
+    document.getElementById('pulsante-avanti-risultati').onclick = function(){
+  if (!isUltima) {
+    mostraPagina(i+1);
+  } else {
+    schermo.innerHTML =
+      "<h2>Test concluso</h2>" +
+      "<p style='text-align:center;'>Grazie per aver partecipato. Puoi chiudere questa scheda.</p>";
+  }
+};
+  }
+  mostraPagina(0);
+}
+
+// ---------------- avvio ----------------
+timeline.push(schermataDatiPartecipante());
+timeline.push(schermataTesto(
+  "<h2>Test di associazione implicita</h2><p style='text-align:center;'>Il test prevede 3 argomenti, ciascuno con 4 fasi.<br>In ogni fase ci saranno alcune domande a cui risponderai selezionando uno dei due pulsanti in basso.<br>Per ogni domanda, compariranno in alto due categorie alternative e al centro una parola.<br>La tua risposta consiste nell'associare la parola al centro a una delle categorie in alto tramite i pulsanti.<br>Tocca <b>SINISTRA</b> se la parola appartiene alla categoria a sinistra e <b>DESTRA</b> se appartiene alla categoria a destra.<br>Rispondi il più velocemente possibile restando accurato/a. Se sbagli, dovrai correggere prima di proseguire.</p>"
+));
+var ordine = shuffle(argomenti);
+// Ordine fisso imposto dal protocollo: la combinazione stereotipica
+// precede sempre quella controstereotipica.
+var stereoPrima = true; 
+extra.ordine_argomenti = ordine.map(a=>a.id).join(' > ');
+extra.ordine_blocchi_combinati = stereoPrima ? 'stereotipica_prima' : 'controstereotipica_prima';
+ordine.forEach(a => { timeline = timeline.concat(timelineArgomento(a, stereoPrima)); });
+
+avanti();
+</script>
+</body>
+</html>
