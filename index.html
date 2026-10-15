@@ -152,15 +152,15 @@ var target_femminile = ['Giulia','Rossella','Asia','Giada','Rosa','Alessia'];
 var target_maschile = ['Luca','Mario','Samuele','Gabriele','Filippo','Federico'];
 
 var argomenti = [
-  { id:'lavoro1', titolo:'LAVORO_1', etichettaA:'Ambito Industriale', etichettaB:'Ambito Scolastico',
-    attrA:['Magazziniere','Assemblatore','Saldatore','Carrozziere'],
-    attrB:['Insegnante di asilo','Personale di collaborazione scolastica','Educatore','Assistente amministrativa'] },
-  { id:'lavoro2', titolo:'LAVORO_2', etichettaA:'Ambito Sanitario', etichettaB:'Ambito Spettacolo',
-    attrA:['Ortopedico','Osteopata','Fisioterapista','Medico/a',"Farmacista","Cardiochirurgo"],
-    attrB:['Giornalista di cronaca rosa','Opinionista','Costumista','Effettua una co-conduzione','Dialoghista','Casting Director'] },
-  { id:'lavoro3', titolo:'LAVORO_3', etichettaA:'Ambito Trasporti', etichettaB:'Ambito Estetico',
-    attrA:['Corriere','Camionista',"Mulettista",'Macchinista ferroviario','Autista di autobus'],
-    attrB:['Onicotecnica (trattamento unghie)','Consulente di dermocosmesi','Consulente immagine','Estetista',"Lash & Brow Specialist"] }
+  { id:'lavoro1', titolo:'LAVORO_1', etichettaA:'Ambito Scolastico',etichettaB:'Ambito Industriale',
+    attrA:['Insegnante di asilo','Personale di collaborazione scolastica','Educatore','Assistente amministrativa'],
+    attrB:['Magazziniere','Assemblatore','Saldatore','Carrozziere'] },
+  { id:'lavoro2', titolo:'LAVORO_2',etichettaA:'Ambito Spettacolo', etichettaB:'Ambito Sanitario', 
+   attrA:['Giornalista di cronaca rosa','Opinionista','Costumista','Effettua una co-conduzione','Dialoghista','Casting Director'],
+   attrB:['Ortopedico','Osteopata','Fisioterapista','Medico/a',"Farmacista","Cardiochirurgo"] },
+  { id:'lavoro3', titolo:'LAVORO_3', etichettaA:'Ambito Estetico', etichettaB:'Ambito Trasporti', 
+   attrA:['Onicotecnica (trattamento unghie)','Consulente di dermocosmesi','Consulente immagine','Estetista',"Lash & Brow Specialist"],
+   attrB:['Corriere','Camionista',"Mulettista",'Macchinista ferroviario','Autista di autobus'] }
 ];
 
 function shuffle(arr){var a=arr.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
