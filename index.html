@@ -160,7 +160,19 @@ var argomenti = [
    attrB:['Ortopedico','Osteopata','Fisioterapista','Medico/a',"Farmacista","Cardiochirurgo"] },
   { id:'lavoro3', titolo:'LAVORO_3', etichettaA:'Ambito Estetico', etichettaB:'Ambito Trasporti', 
    attrA:['Onicotecnica (trattamento unghie)','Consulente di dermocosmesi','Consulente immagine','Estetista',"Lash & Brow Specialist"],
-   attrB:['Corriere','Camionista',"Mulettista",'Macchinista ferroviario','Autista di autobus'] }
+   attrB:['Corriere','Camionista',"Mulettista",'Macchinista ferroviario','Autista di autobus'] },
+   { id:'lavoro4', titolo:'LAVORO_4',etichettaA:'Ambito Care giving', etichettaB:'Ambito Ristorazione', 
+   attrA:['Baby sitter','Assistente famigliare','Colf','Operatore Socio Sanitario'],
+   attrB:['Chef','Sommelier','Mastro pizzaiolo','Barman'] },
+   { id:'lavoro5', titolo:'LAVORO_5',etichettaA:'Stipendio Contenuto', etichettaB:'Stipendio Elevato', 
+   attrA:['Paga-base','Part-time','Minimo'],
+   attrB:['Patrimonio','Full-time','Superstipendio'] },
+   { id:'lavoro6', titolo:'LAVORO_6',etichettaA:'Orario vincolato', etichettaB:'Disponibilità totale', 
+   attrA:['Uscita-fissa','Mezza-giornata','Orario ridotto'],
+   attrB:['Straordinari','Reperibile','Trasferta'] },
+ { id:'lavoro7', titolo:'LAVORO_7',etichettaA:'Attività di Supporto', etichettaB:'Attività Decisionali', 
+   attrA:['Preparare il caffè','Prendere appunti','Accogliere i clienti','Rispondere al telefono','Fissare gli appuntamenti'],
+   attrB:['Assegnare obiettivi','Guidare la riunione','Prendere decisioni','Controllare il budget','Firmare contratti'] },
 ];
 
 function shuffle(arr){var a=arr.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
