@@ -295,100 +295,110 @@ function trialIat(parola, categoria, lato, etichettaSx, etichettaDx, blocco, top
   };
 }
 
-function timelineArgomento(argomento, stereoPrima){
+function timelineArgomento(argomento, stereoPrima, primoArgomento){
   var fasi = [];
   fasi.push(schermataTesto("<h2>"+argomento.titolo+"</h2><p style='text-align:center;'>Tocca Continua per iniziare il primo test.</p>"));
 
-  var domandaTest1 = "Smista i NOMI in LEI (sinistra) o LUI (destra).";
-  fasi.push(schermataTesto("<h3>Test 1</h3><p style='text-align:center;'>LEI è in alto a sinistra, LUI in alto a destra. Tocca SINISTRA o DESTRA a seconda del nome mostrato.</p>"));
-  var t1 = [];
-  target_femminile.forEach(w=>t1.push(trialIat(w,'femminile','left',['LEI'],['LUI'],'test1_target',argomento.id,null,1,domandaTest1)));
-  target_maschile.forEach(w=>t1.push(trialIat(w,'maschile','right',['LEI'],['LUI'],'test1_target',argomento.id,null,1,domandaTest1)));
-  fasi = fasi.concat(shuffle(t1));
+  // Nel PRIMO argomento viene mantenuto il Test 1 con i soli nomi LEI/LUI.
+  // Dal SECONDO argomento in poi questo blocco viene eliminato.
+  var numeroTestAttivita;
+  if (primoArgomento) {
+    var domandaTest1 = "Smista i NOMI in LEI (sinistra) o LUI (destra).";
+    fasi.push(schermataTesto("<h3>Test 1</h3><p style='text-align:center;'>LEI è in alto a sinistra, LUI in alto a destra. Tocca SINISTRA o DESTRA a seconda del nome mostrato.</p>"));
+    var t1 = [];
+    target_femminile.forEach(w=>t1.push(trialIat(w,'femminile','left',['LEI'],['LUI'],'test1_target',argomento.id,null,1,domandaTest1)));
+    target_maschile.forEach(w=>t1.push(trialIat(w,'maschile','right',['LEI'],['LUI'],'test1_target',argomento.id,null,1,domandaTest1)));
+    fasi = fasi.concat(shuffle(t1));
+    numeroTestAttivita = 2;
+  } else {
+    numeroTestAttivita = 1;
+  }
 
-  var domandaTest2 = "Smista le ATTIVITÀ in "+argomento.etichettaA.toUpperCase()+" (sinistra) o "+argomento.etichettaB.toUpperCase()+" (destra).";
-  fasi.push(schermataTesto("<h3>Test 2</h3><p style='text-align:center;'>"+argomento.etichettaA.toUpperCase()+" è in alto a sinistra, "+argomento.etichettaB.toUpperCase()+" in alto a destra. Tocca SINISTRA o DESTRA a seconda dell'attività mostrata.</p>"));
+  // Test attività: nel primo argomento è Test 2; nei successivi è Test 1.
+  var domandaTestAttivita = "Smista le ATTIVITÀ in "+argomento.etichettaA.toUpperCase()+" (sinistra) o "+argomento.etichettaB.toUpperCase()+" (destra).";
+  fasi.push(schermataTesto("<h3>Test "+numeroTestAttivita+"</h3><p style='text-align:center;'>"+argomento.etichettaA.toUpperCase()+" è in alto a sinistra, "+argomento.etichettaB.toUpperCase()+" in alto a destra. Tocca SINISTRA o DESTRA a seconda dell'attività mostrata.</p>"));
   var t2 = [];
-  argomento.attrA.forEach(w=>t2.push(trialIat(w,'attrA','left',[argomento.etichettaA],[argomento.etichettaB],'test2_attributo',argomento.id,null,2,domandaTest2)));
-  argomento.attrB.forEach(w=>t2.push(trialIat(w,'attrB','right',[argomento.etichettaA],[argomento.etichettaB],'test2_attributo',argomento.id,null,2,domandaTest2)));
+  argomento.attrA.forEach(w=>t2.push(trialIat(w,'attrA','left',[argomento.etichettaA],[argomento.etichettaB],'test2_attributo',argomento.id,null,numeroTestAttivita,domandaTestAttivita)));
+  argomento.attrB.forEach(w=>t2.push(trialIat(w,'attrB','right',[argomento.etichettaA],[argomento.etichettaB],'test2_attributo',argomento.id,null,numeroTestAttivita,domandaTestAttivita)));
   fasi = fasi.concat(shuffle(t2));
 
-function blocco(femminileConA, numeroTest){
-  var ts = [];
+  function blocco(femminileConA, numeroTest){
+    var ts = [];
 
-  // LEI rimane SEMPRE a sinistra e LUI SEMPRE a destra.
-  // Cambia soltanto il lato delle categorie delle attività.
-  var sx = femminileConA
-    ? ['LEI', argomento.etichettaA]
-    : ['LEI', argomento.etichettaB];
+    // LEI rimane SEMPRE a sinistra e LUI SEMPRE a destra.
+    // Cambia soltanto il lato delle categorie delle attività.
+    var sx = femminileConA
+      ? ['LEI', argomento.etichettaA]
+      : ['LEI', argomento.etichettaB];
 
-  var dx = femminileConA
-    ? ['LUI', argomento.etichettaB]
-    : ['LUI', argomento.etichettaA];
+    var dx = femminileConA
+      ? ['LUI', argomento.etichettaB]
+      : ['LUI', argomento.etichettaA];
 
-  var cond = femminileConA
-    ? 'stereotipica'
-    : 'controstereotipica';
+    var cond = femminileConA
+      ? 'stereotipica'
+      : 'controstereotipica';
 
-  var domandaCombinata =
-    "Smista NOMI e ATTIVITÀ tra " +
-    sx.join(' + ') + " (sinistra) e " +
-    dx.join(' + ') + " (destra).";
+    var domandaCombinata =
+      "Smista NOMI e ATTIVITÀ tra " +
+      sx.join(' + ') + " (sinistra) e " +
+      dx.join(' + ') + " (destra).";
 
-  // I NOMI NON CAMBIANO MAI LATO:
-  // nomi femminili sempre a sinistra
-  // nomi maschili sempre a destra
-  target_femminile.forEach(function(w) {
-    ts.push(trialIat(
-      w, 'lei', 'left', sx, dx,
-      'combinato', argomento.id, cond,
-      numeroTest, domandaCombinata
+    // I NOMI RESTANO nei test combinati anche negli argomenti successivi:
+    // nomi femminili sempre a sinistra, nomi maschili sempre a destra.
+    target_femminile.forEach(function(w) {
+      ts.push(trialIat(
+        w, 'lei', 'left', sx, dx,
+        'combinato', argomento.id, cond,
+        numeroTest, domandaCombinata
+      ));
+    });
+
+    target_maschile.forEach(function(w) {
+      ts.push(trialIat(
+        w, 'lui', 'right', sx, dx,
+        'combinato', argomento.id, cond,
+        numeroTest, domandaCombinata
+      ));
+    });
+
+    // Le attività A e B si scambiano di lato tra i due test combinati.
+    argomento.attrA.forEach(function(w) {
+      ts.push(trialIat(
+        w, 'attrA', femminileConA ? 'left' : 'right',
+        sx, dx, 'combinato', argomento.id, cond,
+        numeroTest, domandaCombinata
+      ));
+    });
+
+    argomento.attrB.forEach(function(w) {
+      ts.push(trialIat(
+        w, 'attrB', femminileConA ? 'right' : 'left',
+        sx, dx, 'combinato', argomento.id, cond,
+        numeroTest, domandaCombinata
+      ));
+    });
+
+    var nota = numeroTest === (primoArgomento ? 3 : 2)
+      ? "I nomi femminili sono sempre a sinistra e quelli maschili a destra. Le attività sono associate alle categorie indicate sopra."
+      : "Attenzione: LEI rimane a sinistra e LUI a destra. Sono cambiate soltanto le posizioni delle categorie delle attività rispetto al test precedente.";
+
+    fasi.push(schermataTesto(
+      "<h3>Test " + numeroTest + "</h3>" +
+      "<p style='text-align:center;'>Categorie combinate:<br>" +
+      sx.join(' + ') + " / " + dx.join(' + ') +
+      "</p>" +
+      "<p style='color:#7f8c8d;font-size:14px;text-align:center;'>" +
+      nota + "</p>"
     ));
-  });
 
-  target_maschile.forEach(function(w) {
-    ts.push(trialIat(
-      w, 'lui', 'right', sx, dx,
-      'combinato', argomento.id, cond,
-      numeroTest, domandaCombinata
-    ));
-  });
+    fasi = fasi.concat(shuffle(ts));
+  }
 
-  // Le attività A e B si scambiano di lato tra Test 3 e Test 4.
-  argomento.attrA.forEach(function(w) {
-    ts.push(trialIat(
-      w, 'attrA', femminileConA ? 'left' : 'right',
-      sx, dx, 'combinato', argomento.id, cond,
-      numeroTest, domandaCombinata
-    ));
-  });
-
-  argomento.attrB.forEach(function(w) {
-    ts.push(trialIat(
-      w, 'attrB', femminileConA ? 'right' : 'left',
-      sx, dx, 'combinato', argomento.id, cond,
-      numeroTest, domandaCombinata
-    ));
-  });
-
-  var nota = numeroTest === 3
-    ? "I nomi femminili sono sempre a sinistra e quelli maschili a destra. Le attività sono associate alle categorie indicate sopra."
-    : "Attenzione: LEI rimane a sinistra e LUI a destra. Sono cambiate soltanto le posizioni delle categorie delle attività rispetto al test precedente.";
-
-  fasi.push(schermataTesto(
-    "<h3>Test " + numeroTest + "</h3>" +
-    "<p style='text-align:center;'>Categorie combinate:<br>" +
-    sx.join(' + ') + " / " + dx.join(' + ') +
-    "</p>" +
-    "<p style='color:#7f8c8d;font-size:14px;text-align:center;'>" +
-    nota + "</p>"
-  ));
-
-  fasi = fasi.concat(shuffle(ts));
-}
-
-  blocco(stereoPrima, 3);
-  blocco(!stereoPrima, 4);
+  // Primo argomento: Test 3 e Test 4.
+  // Argomenti successivi: Test 2 e Test 3.
+  blocco(stereoPrima, primoArgomento ? 3 : 2);
+  blocco(!stereoPrima, primoArgomento ? 4 : 3);
   return fasi;
 }
 
@@ -661,15 +671,15 @@ function calcolaDScore(topicId) {
 // ---------------- avvio ----------------
 timeline.push(schermataDatiPartecipante());
 timeline.push(schermataTesto(
-  "<h2>Test di associazione implicita</h2><p style='text-align:center;'>Il test prevede 7 argomenti, ciascuno con 4 fasi.<br>In ogni fase ci saranno alcune domande a cui risponderai selezionando uno dei due pulsanti in basso.<br>Per ogni domanda, compariranno in alto due categorie alternative e al centro una parola.<br>La tua risposta consiste nell'associare la parola al centro a una delle categorie in alto tramite i pulsanti.<br>Tocca <b>SINISTRA</b> se la parola appartiene alla categoria a sinistra e <b>DESTRA</b> se appartiene alla categoria a destra.<br>Rispondi il più velocemente possibile restando accurato/a. Se sbagli, dovrai correggere prima di proseguire.</p>"
+  "<h2>Test di associazione implicita</h2><p style='text-align:center;'>Il test prevede 7 argomenti. Nel primo argomento sono presenti 4 fasi; negli argomenti successivi sono presenti 3 fasi.<br>In ogni fase ci saranno alcune domande a cui risponderai selezionando uno dei due pulsanti in basso.<br>Per ogni domanda, compariranno in alto due categorie alternative e al centro una parola.<br>La tua risposta consiste nell'associare la parola al centro a una delle categorie in alto tramite i pulsanti.<br>Tocca <b>SINISTRA</b> se la parola appartiene alla categoria a sinistra e <b>DESTRA</b> se appartiene alla categoria a destra.<br>Rispondi il più velocemente possibile restando accurato/a. Se sbagli, dovrai correggere prima di proseguire.</p>"
 ));
-var ordine = shuffle(argomenti);
+var ordine = argomenti.slice();
 // Ordine fisso imposto dal protocollo: la combinazione stereotipica
 // precede sempre quella controstereotipica.
 var stereoPrima = true; 
 extra.ordine_argomenti = ordine.map(a=>a.id).join(' > ');
 extra.ordine_blocchi_combinati = stereoPrima ? 'stereotipica_prima' : 'controstereotipica_prima';
-ordine.forEach(a => { timeline = timeline.concat(timelineArgomento(a, stereoPrima)); });
+ordine.forEach((a, indiceArgomento) => { timeline = timeline.concat(timelineArgomento(a, stereoPrima, indiceArgomento === 0)); });
 
 avanti();
 </script>
