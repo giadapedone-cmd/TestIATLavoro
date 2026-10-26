@@ -152,23 +152,23 @@ var target_femminile = ['Giulia','Rossella','Asia','Giada','Rosa','Alessia'];
 var target_maschile = ['Luca','Mario','Samuele','Gabriele','Filippo','Federico'];
 
 var argomenti = [
-  { id:'scuolaindustria', titolo:'Settori: Scuola vs Industria', etichettaA:'Ambito Scolastico',etichettaB:'Ambito Industriale',
+  { id:'scuolaindustria', titolo:'Scuola vs Industria', etichettaA:'Ambito Scolastico',etichettaB:'Ambito Industriale',
     attrA:['Insegnante di asilo','Personale di collaborazione scolastica','Pedagogista','Personale di segreteria scolastica'],
     attrB:['Lavora per il magazzino',"Lavora per l’assemblaggio",'Esegue le saldature','Ripara la carrozzeria delle auto'] },
-  { id:'esteticatrasporti', titolo:'Settori: Estetica vs Trasporti', etichettaA:'Ambito Estetico', etichettaB:'Ambito Trasporti', 
+  { id:'esteticatrasporti', titolo:'Estetica vs Trasporti', etichettaA:'Ambito Estetico', etichettaB:'Ambito Trasporti', 
    attrA:['Onicotecnica (trattamento unghie)','Consulente di dermocosmesi','Consulente immagine','Estetista'],
    attrB:['Corriere','Camionista','Macchinista ferroviario','Autista'] },
-   { id:'curaristorazione', titolo:'Settori: Cura vs Ristorazione',etichettaA:'Ambito Care giving', etichettaB:'Ambito Ristorazione', 
+   { id:'curaristorazione', titolo:'Cura vs Ristorazione',etichettaA:'Ambito Care giving', etichettaB:'Ambito Ristorazione', 
    attrA:['Baby sitter','Assistente famigliare','Colf'],
    attrB:['Chef','Sommelier','Mastro pizzaiolo'] },
    { id:'livelliretribuzione', titolo:'Livelli di Retribuzione',etichettaA:'Stipendio Contenuto', etichettaB:'Stipendio Elevato', 
-   attrA:['Paga-base','Contratto di lavoro precario','Stipendio base'],
-   attrB:['Posizione lavorativa ben retribuita','Contratto a tempo indeterminato','Superstipendio'] },
-   { id:'tipiorario', titolo:'Tipologie di Orario',etichettaA:'Orario compatibile con la vita familiare', etichettaB:'Orario ad alta disponibilità', 
+   attrA:['Paga-base','Stipendio base'],
+   attrB:['Posizione lavorativa ben retribuita','Retribuzione manageriale'] },
+   { id:'tipiorario', titolo:'Tipologie di Orario',etichettaA:'Orario compatibile con la vita familiare', etichettaB:'Orario ad alta disponibilità aziendale', 
    attrA:['Orario ridotto','Mezza-giornata','Pomeriggio libero'],
    attrB:['Straordinari','Reperibile','Trasferta'] },
  { id:'ruolioperatividirettivi', titolo:'Settori: Ruoli Operativi vs Direttivi',etichettaA:'Attività di Supporto', etichettaB:'Attività Decisionali', 
-   attrA:['Preparare il caffè','Accogliere i clienti','Rispondere al telefono','Fissare gli appuntamenti'],
+   attrA:['Preparare il caffè','Accogliere i clienti','Rispondere al centralino','Fissare gli appuntamenti'],
    attrB:['Assegnare obiettivi','Guidare la riunione','Prendere decisioni','Firmare contratti'] },
 ];
 
@@ -301,7 +301,7 @@ function timelineArgomento(argomento, stereoPrima, primoArgomento){
   var numeroTestAttivita;
   if (primoArgomento) {
     var domandaTest1 = "Smista i NOMI in LEI (sinistra) o LUI (destra).";
-    fasi.push(schermataTesto("<h3>Test 1</h3><p style='text-align:center;'>LEI è in alto a sinistra, LUI in alto a destra. Tocca SINISTRA o DESTRA a seconda del nome mostrato.</p>"));
+    fasi.push(schermataTesto("<h3>Test 1</h3><p style='text-align:center;'>LEI è in alto a sinistra, LUI in alto a destra.<br> Tocca SINISTRA o DESTRA a seconda del nome mostrato.</p>"));
     var t1 = [];
     target_femminile.forEach(w=>t1.push(trialIat(w,'femminile','left',['LEI'],['LUI'],'test1_target',argomento.id,null,1,domandaTest1)));
     target_maschile.forEach(w=>t1.push(trialIat(w,'maschile','right',['LEI'],['LUI'],'test1_target',argomento.id,null,1,domandaTest1)));
@@ -377,8 +377,8 @@ function timelineArgomento(argomento, stereoPrima, primoArgomento){
     });
 
     var nota = numeroTest === (primoArgomento ? 3 : 2)
-      ? "I nomi femminili sono sempre a sinistra e quelli maschili a destra. Le attività sono associate alle categorie indicate sopra."
-      : "Attenzione: LEI rimane a sinistra e LUI a destra. Sono cambiate soltanto le posizioni delle categorie delle attività rispetto al test precedente.";
+      ? "Il genere femminile è sempre a sinistra, mentre quello maschile a destra. Il termine che apparirà al centro è associato ad una delle categorie indicate sopra."
+      : "Attenzione: LEI rimane a sinistra e LUI a destra. Sono cambiate soltanto le posizioni delle categorie rispetto al test precedente.";
 
     fasi.push(schermataTesto(
       "<h3>Test " + numeroTest + "</h3>" +
@@ -668,7 +668,7 @@ function calcolaDScore(topicId) {
 // ---------------- avvio ----------------
 timeline.push(schermataDatiPartecipante());
 timeline.push(schermataTesto(
-  "<h2>Test di associazione implicita</h2><p style='text-align:center;'>Il test prevede 7 argomenti. Nel primo argomento sono presenti 4 fasi; negli argomenti successivi sono presenti 3 fasi.<br>In ogni fase ci saranno alcune domande a cui risponderai selezionando uno dei due pulsanti in basso.<br>Per ogni domanda, compariranno in alto due categorie alternative e al centro una parola.<br>La tua risposta consiste nell'associare la parola al centro a una delle categorie in alto tramite i pulsanti.<br>Tocca <b>SINISTRA</b> se la parola appartiene alla categoria a sinistra e <b>DESTRA</b> se appartiene alla categoria a destra.<br>Rispondi il più velocemente possibile restando accurato/a. Se sbagli, dovrai correggere prima di proseguire.</p>"
+  "<h2>Test di associazione implicita</h2><p style='text-align:center;'><p>Affronterai una serie di test su 7 argomenti legati al mondo del lavoro. Per ogni domanda, associa il termine al centro a una delle due categorie in alto, premendo <b>SINISTRA</b> o <b>DESTRA</b> in base alla posizione della categoria corretta.<br>Rispondi il più velocemente possibile, senza sacrificare l'accuratezza. Se sbagli, correggi la risposta prima di proseguire.</p>"
 ));
 var ordine = argomenti.slice();
 // Ordine fisso imposto dal protocollo: la combinazione stereotipica
