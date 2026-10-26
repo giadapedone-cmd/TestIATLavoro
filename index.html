@@ -313,7 +313,7 @@ function timelineArgomento(argomento, stereoPrima, primoArgomento){
 
   // Test attività: nel primo argomento è Test 2; nei successivi è Test 1.
   var domandaTestAttivita = "Smista le ATTIVITÀ in "+argomento.etichettaA.toUpperCase()+" (sinistra) o "+argomento.etichettaB.toUpperCase()+" (destra).";
-  fasi.push(schermataTesto("<h3>Test "+numeroTestAttivita+"</h3><p style='text-align:center;'>"+argomento.etichettaA.toUpperCase()+" è in alto a sinistra, "+argomento.etichettaB.toUpperCase()+" in alto a destra. Tocca SINISTRA o DESTRA a seconda dell'attività mostrata.</p>"));
+  fasi.push(schermataTesto("<h3>Test "+numeroTestAttivita+"</h3><p style='text-align:center;'>"+argomento.etichettaA.toUpperCase()+" è in alto a sinistra, "+argomento.etichettaB.toUpperCase()+" in alto a destra.<br> Tocca SINISTRA o DESTRA a seconda dell'attività mostrata.</p>"));
   var t2 = [];
   argomento.attrA.forEach(w=>t2.push(trialIat(w,'attrA','left',[argomento.etichettaA],[argomento.etichettaB],'test2_attributo',argomento.id,null,numeroTestAttivita,domandaTestAttivita)));
   argomento.attrB.forEach(w=>t2.push(trialIat(w,'attrB','right',[argomento.etichettaA],[argomento.etichettaB],'test2_attributo',argomento.id,null,numeroTestAttivita,domandaTestAttivita)));
@@ -377,8 +377,8 @@ function timelineArgomento(argomento, stereoPrima, primoArgomento){
     });
 
     var nota = numeroTest === (primoArgomento ? 3 : 2)
-      ? "Il genere femminile è sempre a sinistra, mentre quello maschile a destra. Il termine che apparirà al centro è associato ad una delle categorie indicate sopra."
-      : "Attenzione: LEI rimane a sinistra e LUI a destra. Sono cambiate soltanto le posizioni delle categorie rispetto al test precedente.";
+      ? "Il genere femminile è sempre a sinistra, mentre quello maschile a destra. <br>Il termine che apparirà al centro è associato ad una delle categorie indicate sopra."
+      : "Attenzione: Il genere femminile rimane a sinistra, mentre quello maschile a destra. <br> Sono cambiate soltanto le posizioni delle categorie rispetto al test precedente.";
 
     fasi.push(schermataTesto(
       "<h3>Test " + numeroTest + "</h3>" +
@@ -668,7 +668,7 @@ function calcolaDScore(topicId) {
 // ---------------- avvio ----------------
 timeline.push(schermataDatiPartecipante());
 timeline.push(schermataTesto(
-  "<h2>Test di associazione implicita</h2><p style='text-align:center;'><p>Affronterai una serie di test su 7 argomenti legati al mondo del lavoro. Per ogni domanda, associa il termine al centro a una delle due categorie in alto, premendo <b>SINISTRA</b> o <b>DESTRA</b> in base alla posizione della categoria corretta.<br>Rispondi il più velocemente possibile, senza sacrificare l'accuratezza. Se sbagli, correggi la risposta prima di proseguire.</p>"
+  "<h2>Test di associazione implicita</h2><p style='text-align:center;'><p>Affronterai una serie di test su 7 argomenti legati al mondo del lavoro.<br> Per ogni domanda, associa il termine al centro a una delle due categorie in alto, premendo <b>SINISTRA</b> o <b>DESTRA</b> in base alla posizione della categoria corretta.<br>Rispondi il più velocemente possibile, senza sacrificare l'accuratezza. Se sbagli, correggi la risposta prima di proseguire.</p>"
 ));
 var ordine = argomenti.slice();
 // Ordine fisso imposto dal protocollo: la combinazione stereotipica
