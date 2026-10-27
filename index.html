@@ -301,7 +301,7 @@ function timelineArgomento(argomento, stereoPrima, primoArgomento){
   var numeroTestAttivita;
   if (primoArgomento) {
     var domandaTest1 = "Smista i NOMI in LEI (sinistra) o LUI (destra).";
-    fasi.push(schermataTesto("<h3>Test 1</h3><p style='text-align:center;'>LEI è in alto a sinistra, LUI in alto a destra.<br> Tocca SINISTRA o DESTRA a seconda del nome mostrato.</p>"));
+    fasi.push(schermataTesto("<h3>Test 1</h3><p style='text-align:center;'>LEI è in alto a sinistra,<br> LUI in alto a destra.<br> Tocca SINISTRA o DESTRA a seconda del nome mostrato.</p>"));
     var t1 = [];
     target_femminile.forEach(w=>t1.push(trialIat(w,'femminile','left',['LEI'],['LUI'],'test1_target',argomento.id,null,1,domandaTest1)));
     target_maschile.forEach(w=>t1.push(trialIat(w,'maschile','right',['LEI'],['LUI'],'test1_target',argomento.id,null,1,domandaTest1)));
@@ -313,7 +313,7 @@ function timelineArgomento(argomento, stereoPrima, primoArgomento){
 
   // Test attività: nel primo argomento è Test 2; nei successivi è Test 1.
   var domandaTestAttivita = "Smista le ATTIVITÀ in "+argomento.etichettaA.toUpperCase()+" (sinistra) o "+argomento.etichettaB.toUpperCase()+" (destra).";
-  fasi.push(schermataTesto("<h3>Test "+numeroTestAttivita+"</h3><p style='text-align:center;'>"+argomento.etichettaA.toUpperCase()+" è in alto a sinistra, "+argomento.etichettaB.toUpperCase()+" in alto a destra.<br> Tocca SINISTRA o DESTRA a seconda dell'attività mostrata.</p>"));
+  fasi.push(schermataTesto("<h3>Test "+numeroTestAttivita+"</h3><p style='text-align:center;'>"+argomento.etichettaA.toUpperCase()+" è in alto a sinistra, <br> "+argomento.etichettaB.toUpperCase()+" in alto a destra.<br> Tocca SINISTRA o DESTRA a seconda dell'attività mostrata.</p>"));
   var t2 = [];
   argomento.attrA.forEach(w=>t2.push(trialIat(w,'attrA','left',[argomento.etichettaA],[argomento.etichettaB],'test2_attributo',argomento.id,null,numeroTestAttivita,domandaTestAttivita)));
   argomento.attrB.forEach(w=>t2.push(trialIat(w,'attrB','right',[argomento.etichettaA],[argomento.etichettaB],'test2_attributo',argomento.id,null,numeroTestAttivita,domandaTestAttivita)));
